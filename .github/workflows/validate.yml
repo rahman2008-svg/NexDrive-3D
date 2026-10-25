@@ -1,0 +1,19 @@
+name: Unity project validation
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+jobs:
+  project-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check required Unity project files
+        run: |
+          test -f ProjectSettings/ProjectVersion.txt
+          test -f ProjectSettings/EditorBuildSettings.asset
+          test -f Assets/Scenes/Main.unity
+          test -f Assets/Scripts/GameBootstrap.cs
+          test -f Assets/Scripts/CarController.cs
+          test -f codemagic.yaml
+          echo "Unity project structure OK. This workflow does not compile Unity or create an APK."
