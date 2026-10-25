@@ -3,25 +3,48 @@ workflows:
     name: NexDrive 3D - Unity Android APK
     max_build_duration: 120
     instance_type: mac_mini_m2
+
     environment:
-      vars:
-        UNITY_VERSION: "2022.3.62f1"
-        UNITY_LICENSE: $UNITY_LICENSE
+      unity: 2022.3.62f2
       groups:
         - unity_credentials
+      vars:
+        UNITY_VERSION: "2022.3.62f2"
+        UNITY_LICENSE: $UNITY_LICENSE
+
     scripts:
-      - name: Check Unity installation and license
+      - name: Verify Unity installation
         script: |
-          if ! command -v unity-editor >/dev/null 2>&1 && [ ! -x "/Applications/Unity/Hub/Editor/${UNITY_VERSION}/Unity.app/Contents/MacOS/Unity" ]; then
-            echo "Unity ${UNITY_VERSION} is not preinstalled on this runner. Install the matching Unity Editor and Android Build Support in the Codemagic machine image, or use a Unity-capable CI runner."
+          set -e
+
+          if [ -x "/Applications/Unity/Hub/Editor/${UNITY_VERSION}/Unity.app/Contents/MacOS/Unity" ]; then
+            export UNITY_BIN="/Applications/Unity/Hub/Editor/${UNITY_VERSION}/Unity.app/Contents/MacOS/Unity"
+          elif command -v unity-editor >/dev/null 2>&1; then
+            export UNITY_BIN="$(command -v unity-editor)"
+          else
+            echo "Unity Editor ${UNITY_VERSION} is unavailable."
             exit 1
           fi
-          if [ -x "/Applications/Unity/Hub/Editor/${UNITY_VERSION}/Unity.app/Contents/MacOS/Unity" ]; then export UNITY_BIN="/Applications/Unity/Hub/Editor/${UNITY_VERSION}/Unity.app/Contents/MacOS/Unity"; else export UNITY_BIN="$(command -v unity-editor)"; fi
-          echo "UNITY_BIN=$UNITY_BIN" >> $CM_ENV
+
+          "$UNITY_BIN" -version
+          echo "UNITY_BIN=$UNITY_BIN" >> "$CM_ENV"
+
       - name: Build Android APK
         script: |
-          "$UNITY_BIN" -batchmode -nographics -quit -projectPath "$CM_BUILD_DIR" -executeMethod NexDriveBuild.BuildAndroid -logFile "$CM_BUILD_DIR/unity-build.log"
-          test -f build/NexDrive3D.apk
+          set -e
+
+          mkdir -p "$CM_BUILD_DIR/build"
+
+          "$UNITY_BIN" \
+            -batchmode \
+            -nographics \
+            -quit \
+            -projectPath "$CM_BUILD_DIR" \
+            -executeMethod NexDriveBuild.BuildAndroid \
+            -logFile "$CM_BUILD_DIR/unity-build.log"
+
+          test -f "$CM_BUILD_DIR/build/NexDrive3D.apk"
+
     artifacts:
       - build/NexDrive3D.apk
       - unity-build.log
